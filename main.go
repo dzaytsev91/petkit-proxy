@@ -63,14 +63,14 @@ func modifyResponse(resp *http.Response) error {
 	if err != nil {
 		return err
 	}
-	resp.Body.Close()
+	bodyErr := resp.Body.Close()
+	if bodyErr != nil {
+		return bodyErr
+	}
 
 	var data map[string]interface{}
 	if err := json.Unmarshal(body, &data); err != nil {
 		log.Printf("JSON parse error: %v", err)
-		resp.Body = io.NopCloser(bytes.NewBuffer(body))
-		resp.ContentLength = int64(len(body))
-		resp.Header.Set("Content-Length", strconv.Itoa(len(body)))
 		return nil
 	}
 
@@ -120,7 +120,7 @@ func NewReverseProxy(target *url.URL) *httputil.ReverseProxy {
 	return proxy
 }
 
-func hostSpecificHandler(proxy http.Handler) http.Handler {
+func proxyHandler(proxy http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Proxying request for host: %s", r.Host)
 		proxy.ServeHTTP(w, r)
@@ -134,7 +134,7 @@ func main() {
 		log.Fatal(err)
 	}
 	proxy := NewReverseProxy(target)
-	handler := hostSpecificHandler(proxy)
+	handler := proxyHandler(proxy)
 	log.Printf("Starting proxy server on %s", proxyPort)
 	log.Fatal(http.ListenAndServe(proxyPort, handler))
 }
