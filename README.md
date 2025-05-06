@@ -4,7 +4,7 @@
 
 `go run main.go`
 
-### How to run in server
+### How to run on server
 
 Copy this repository to server and then run
 `docker-compose up -d`
