@@ -2,5 +2,7 @@ services:
   app:
     build:
       context: .
+    environment:
+      SERVER_IP: "your_server_ip"
     ports:
     - "80:8080"

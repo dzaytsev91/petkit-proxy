@@ -3,12 +3,18 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"os"
 	"strconv"
+)
+
+var (
+	serverInfoIpAddress = fmt.Sprintf("http://%s:80/6/", os.Getenv("SERVER_IP"))
 )
 
 const (
@@ -77,7 +83,7 @@ func modifyResponse(resp *http.Response) error {
 	if resp.Request.URL.Path == serverInfoPath {
 		response := Response{
 			Result: Result{
-				IPServers:  []string{"http://85.192.37.145:80/6/"},
+				IPServers:  []string{serverInfoIpAddress},
 				APIServers: []string{"http://api.eu-pet.com/6/"},
 				NextTick:   3600,
 				Linked:     0,
