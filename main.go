@@ -12,10 +12,25 @@ import (
 )
 
 const (
-	targetURL   = "http://api.eu-pet.com"
-	proxyPort   = ":8080"
-	specialPath = "/6/t4/dev_device_info"
+	targetURL      = "http://api.eu-pet.com"
+	petkitHost     = "api.eu-pet.com"
+	proxyPort      = ":8080"
+	specialPath    = "/6/t4/dev_device_info"
+	specialPath2   = "/6/t3/dev_signup"
+	specialPath3   = "/6/t3/dev_device_info"
+	serverInfoPath = "/6/t3/dev_serverinfo"
 )
+
+type Response struct {
+	Result Result `json:"result"`
+}
+
+type Result struct {
+	IPServers  []string `json:"ipServers"`
+	APIServers []string `json:"apiServers"`
+	NextTick   int      `json:"nextTick"`
+	Linked     int      `json:"linked"`
+}
 
 func logRequest(r *http.Request) {
 	log.Printf(">>> Request: %s %s %s", r.Method, r.URL.String(), r.Proto)
@@ -55,7 +70,30 @@ func logResponse(resp *http.Response) {
 }
 
 func modifyResponse(resp *http.Response) error {
-	if resp.Request.URL.Path != specialPath {
+	if resp.Request.URL.Path != specialPath && resp.Request.URL.Path != serverInfoPath && resp.Request.URL.Path != specialPath2 && resp.Request.URL.Path != specialPath3 {
+		return nil
+	}
+
+	if resp.Request.URL.Path == serverInfoPath {
+		response := Response{
+			Result: Result{
+				IPServers:  []string{"http://85.192.37.145:80/6/"},
+				APIServers: []string{"http://api.eu-pet.com/6/"},
+				NextTick:   3600,
+				Linked:     0,
+			},
+		}
+
+		resp.Header.Set("Content-Type", "application/json")
+		modifiedBody, err := json.Marshal(response)
+		if err != nil {
+			return err
+		}
+
+		resp.Body = io.NopCloser(bytes.NewBuffer(modifiedBody))
+		resp.ContentLength = int64(len(modifiedBody))
+		resp.Header.Set("Content-Length", strconv.Itoa(len(modifiedBody)))
+		logResponse(resp)
 		return nil
 	}
 
@@ -92,7 +130,6 @@ func modifyResponse(resp *http.Response) error {
 	resp.ContentLength = int64(len(modifiedBody))
 	resp.Header.Set("Content-Length", strconv.Itoa(len(modifiedBody)))
 	logResponse(resp)
-
 	return nil
 }
 
@@ -122,6 +159,12 @@ func NewReverseProxy(target *url.URL) *httputil.ReverseProxy {
 
 func proxyHandler(proxy http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Host != petkitHost {
+			log.Printf("Rejected request for host: %s", r.Host)
+			w.WriteHeader(http.StatusForbidden)
+			w.Write([]byte("403 - Host not allowed"))
+			return
+		}
 		log.Printf("Proxying request for host: %s", r.Host)
 		proxy.ServeHTTP(w, r)
 		return
