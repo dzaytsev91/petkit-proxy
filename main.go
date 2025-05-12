@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -15,6 +16,9 @@ import (
 
 var (
 	serverInfoIpAddress = fmt.Sprintf("http://%s:80/6/", os.Getenv("SERVER_IP"))
+	telegramBotToken    = os.Getenv("TELEGRAM_BOT_TOKEN")
+	telegramChatID      = os.Getenv("TELEGRAM_CHAT_ID")
+	targetSN            = os.Getenv("TARGET_SN")
 )
 
 const (
@@ -25,6 +29,8 @@ const (
 	specialPath2   = "/6/t3/dev_signup"
 	specialPath3   = "/6/t3/dev_device_info"
 	serverInfoPath = "/6/t3/dev_serverinfo"
+	heartBeatPath  = "/6/poll/t3/heartbeat"
+	telegramAPIURL = "https://api.telegram.org/bot%s/sendMessage"
 )
 
 type Response struct {
@@ -38,7 +44,52 @@ type Result struct {
 	Linked     int      `json:"linked"`
 }
 
+type TelegramMessage struct {
+	ChatID string `json:"chat_id"`
+	Text   string `json:"text"`
+}
+
+func sendTelegramMessage(message string) {
+	if telegramBotToken == "" || telegramChatID == "" {
+		log.Println("Telegram bot token or chat ID not set, skipping notification")
+		return
+	}
+
+	apiURL := fmt.Sprintf(telegramAPIURL, telegramBotToken)
+	msg := TelegramMessage{
+		ChatID: telegramChatID,
+		Text:   message,
+	}
+
+	jsonMsg, err := json.Marshal(msg)
+	if err != nil {
+		log.Printf("Error marshaling Telegram message: %v", err)
+		return
+	}
+
+	// Create custom transport that skips TLS verification
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	client := &http.Client{Transport: tr}
+
+	resp, err := client.Post(apiURL, "application/json", bytes.NewBuffer(jsonMsg))
+	if err != nil {
+		log.Printf("Error sending Telegram message: %v", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		log.Printf("Telegram API error: %s - %s", resp.Status, string(body))
+	}
+}
+
 func logRequest(r *http.Request) {
+	if r.URL.Path == heartBeatPath {
+		return
+	}
 	log.Printf(">>> Request: %s %s %s", r.Method, r.URL.String(), r.Proto)
 	for name, values := range r.Header {
 		for _, value := range values {
@@ -122,6 +173,10 @@ func modifyResponse(resp *http.Response) error {
 		if settings, ok := result["settings"].(map[string]interface{}); ok {
 			if autowork, exists := settings["autoWork"].(float64); exists {
 				log.Printf("Modifying autowork from %.0f to 1", autowork)
+				if result["sn"].(string) == targetSN {
+					message := fmt.Sprintf("Response: %s for %s %s, %s", resp.Status, resp.Request.Method, resp.Request.URL.Path, data)
+					sendTelegramMessage(message)
+				}
 				settings["autoWork"] = 1
 			}
 		}
@@ -165,12 +220,12 @@ func NewReverseProxy(target *url.URL) *httputil.ReverseProxy {
 
 func proxyHandler(proxy http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Host != petkitHost {
-			log.Printf("Rejected request for host: %s", r.Host)
-			w.WriteHeader(http.StatusForbidden)
-			w.Write([]byte("403 - Host not allowed"))
-			return
-		}
+		//if r.Host != petkitHost {
+		//	log.Printf("Rejected request for host: %s", r.Host)
+		//	w.WriteHeader(http.StatusForbidden)
+		//	w.Write([]byte("403 - Host not allowed"))
+		//	return
+		//}
 		log.Printf("Proxying request for host: %s", r.Host)
 		proxy.ServeHTTP(w, r)
 		return
