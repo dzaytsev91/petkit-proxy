@@ -188,6 +188,16 @@ func modifyResponse(resp *http.Response) error {
 			log.Printf("Modifying regionId from %s to %s", regionId, patchedRegion)
 			result["regionId"] = patchedRegion
 		}
+
+		if ipServers, exists := result["ipServers"].([]string); exists {
+			log.Printf("Modifying ipServers from %s", ipServers[0])
+			result["ipServers"] = []string{"http://192.168.0.150:8980/6/"}
+		}
+
+		if apiServers, exists := result["apiServers"].([]string); exists {
+			log.Printf("Modifying apiServers from %s", apiServers[0])
+			result["apiServers"] = []string{"http://api.eu-pet.com/6/"}
+		}
 	}
 
 	modifiedBody, err := json.Marshal(data)
