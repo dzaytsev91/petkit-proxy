@@ -180,6 +180,7 @@ func modifyResponse(resp *http.Response) error {
 					sendTelegramMessage(message)
 				}
 				settings["autoWork"] = 1
+				settings["unit"] = 0
 			}
 		}
 
