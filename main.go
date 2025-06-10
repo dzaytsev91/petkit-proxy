@@ -189,14 +189,14 @@ func modifyResponse(resp *http.Response) error {
 			result["regionId"] = patchedRegion
 		}
 
-		if ipServers, exists := result["ipServers"].([]string); exists {
+		if ipServers, exists := result["ipServers"].([]interface{}); exists {
 			log.Printf("Modifying ipServers from %s", ipServers[0])
-			result["ipServers"] = []string{"http://192.168.0.150:8980/6/"}
+			result["ipServers"] = []interface{}{"http://192.168.0.150:8980/6/"}
 		}
 
-		if apiServers, exists := result["apiServers"].([]string); exists {
+		if apiServers, exists := result["apiServers"].([]interface{}); exists {
 			log.Printf("Modifying apiServers from %s", apiServers[0])
-			result["apiServers"] = []string{"http://api.eu-pet.com/6/"}
+			result["apiServers"] = []interface{}{"http://api.eu-pet.com/6/"}
 		}
 	}
 
