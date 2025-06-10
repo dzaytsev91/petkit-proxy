@@ -26,11 +26,13 @@ const (
 	petkitHost     = "api.eu-pet.com"
 	proxyPort      = ":8080"
 	specialPath    = "/6/t4/dev_device_info"
+	iotDevInfoPath = "/6/t4/dev_iot_device_info"
 	specialPath2   = "/6/t3/dev_signup"
 	specialPath3   = "/6/t3/dev_device_info"
 	serverInfoPath = "/6/t3/dev_serverinfo"
 	heartBeatPath  = "/6/poll/t3/heartbeat"
 	telegramAPIURL = "https://api.telegram.org/bot%s/sendMessage"
+	patchedRegion  = "cn-shanghai"
 )
 
 type Response struct {
@@ -127,7 +129,7 @@ func logResponse(resp *http.Response) {
 }
 
 func modifyResponse(resp *http.Response) error {
-	if resp.Request.URL.Path != specialPath && resp.Request.URL.Path != serverInfoPath && resp.Request.URL.Path != specialPath2 && resp.Request.URL.Path != specialPath3 {
+	if resp.Request.URL.Path != specialPath && resp.Request.URL.Path != serverInfoPath && resp.Request.URL.Path != specialPath2 && resp.Request.URL.Path != specialPath3 && resp.Request.URL.Path != iotDevInfoPath {
 		return nil
 	}
 
@@ -179,6 +181,15 @@ func modifyResponse(resp *http.Response) error {
 				}
 				settings["autoWork"] = 1
 			}
+		}
+
+		if regionId, exists := result["regionId"].(string); exists {
+			log.Printf("Modifying regionId from %s to %s", regionId, patchedRegion)
+			if result["sn"].(string) == targetSN {
+				message := fmt.Sprintf("Response: %s for %s %s, %s", resp.Status, resp.Request.Method, resp.Request.URL.Path, data)
+				sendTelegramMessage(message)
+			}
+			result["regionId"] = patchedRegion
 		}
 	}
 
