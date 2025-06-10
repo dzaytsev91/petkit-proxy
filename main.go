@@ -185,12 +185,8 @@ func modifyResponse(resp *http.Response) error {
 		}
 
 		if regionId, exists := result["regionId"].(string); exists {
-			//log.Printf("Modifying regionId from %s to %s", regionId, patchedRegion)
-			//result["regionId"] = patchedRegion
-			// fixme: ugly
-			if len(regionId) > 0 {
-				result["regionId"] = patchedRegion
-			}
+			log.Printf("Modifying regionId from %s to %s", regionId, patchedRegion)
+			result["regionId"] = patchedRegion
 		}
 	}
 
