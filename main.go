@@ -185,10 +185,8 @@ func modifyResponse(resp *http.Response) error {
 
 		if regionId, exists := result["regionId"].(string); exists {
 			log.Printf("Modifying regionId from %s to %s", regionId, patchedRegion)
-			if result["sn"].(string) == targetSN {
-				message := fmt.Sprintf("Response: %s for %s %s, %s", resp.Status, resp.Request.Method, resp.Request.URL.Path, data)
-				sendTelegramMessage(message)
-			}
+			message := fmt.Sprintf("Response: %s for %s %s, %s", resp.Status, resp.Request.Method, resp.Request.URL.Path, data)
+			sendTelegramMessage(message)
 			result["regionId"] = patchedRegion
 		}
 	}
