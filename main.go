@@ -15,24 +15,25 @@ import (
 )
 
 var (
-	serverInfoIpAddress = fmt.Sprintf("http://%s:80/6/", os.Getenv("SERVER_IP"))
+	serverInfoIpAddress = fmt.Sprintf("http://%s:%s/6/", os.Getenv("SERVER_IP"), os.Getenv("SERVER_PORT"))
 	telegramBotToken    = os.Getenv("TELEGRAM_BOT_TOKEN")
 	telegramChatID      = os.Getenv("TELEGRAM_CHAT_ID")
 	targetSN            = os.Getenv("TARGET_SN")
 )
 
 const (
-	targetURL      = "http://api.eu-pet.com"
-	petkitHost     = "api.eu-pet.com"
-	proxyPort      = ":8080"
-	specialPath    = "/6/t4/dev_device_info"
-	iotDevInfoPath = "/6/t4/dev_iot_device_info"
-	specialPath2   = "/6/t3/dev_signup"
-	specialPath3   = "/6/t3/dev_device_info"
-	serverInfoPath = "/6/t3/dev_serverinfo"
-	heartBeatPath  = "/6/poll/t3/heartbeat"
-	telegramAPIURL = "https://api.telegram.org/bot%s/sendMessage"
-	patchedRegion  = "cn-shanghai"
+	targetURL       = "http://api.eu-pet.com"
+	petkitHost      = "api.eu-pet.com"
+	proxyPort       = ":8080"
+	specialPath     = "/6/t4/dev_device_info"
+	iotDevInfoPath  = "/6/t4/dev_iot_device_info"
+	specialPath2    = "/6/t3/dev_signup"
+	specialPath3    = "/6/t3/dev_device_info"
+	serverInfoPath  = "/6/t4/dev_serverinfo"
+	serverInfoPath3 = "/6/t3/dev_serverinfo"
+	heartBeatPath   = "/6/poll/t3/heartbeat"
+	telegramAPIURL  = "https://api.telegram.org/bot%s/sendMessage"
+	patchedRegion   = "cn-shanghai"
 )
 
 type Response struct {
@@ -129,11 +130,11 @@ func logResponse(resp *http.Response) {
 }
 
 func modifyResponse(resp *http.Response) error {
-	if resp.Request.URL.Path != specialPath && resp.Request.URL.Path != serverInfoPath && resp.Request.URL.Path != specialPath2 && resp.Request.URL.Path != specialPath3 && resp.Request.URL.Path != iotDevInfoPath {
+	if resp.Request.URL.Path != specialPath && resp.Request.URL.Path != serverInfoPath && resp.Request.URL.Path != serverInfoPath3 && resp.Request.URL.Path != specialPath2 && resp.Request.URL.Path != specialPath3 && resp.Request.URL.Path != iotDevInfoPath {
 		return nil
 	}
 
-	if resp.Request.URL.Path == serverInfoPath {
+	if resp.Request.URL.Path == serverInfoPath || resp.Request.URL.Path == serverInfoPath3 {
 		response := Response{
 			Result: Result{
 				IPServers:  []string{serverInfoIpAddress},
@@ -187,16 +188,6 @@ func modifyResponse(resp *http.Response) error {
 		if regionId, exists := result["regionId"].(string); exists {
 			log.Printf("Modifying regionId from %s to %s", regionId, patchedRegion)
 			result["regionId"] = patchedRegion
-		}
-
-		if ipServers, exists := result["ipServers"].([]interface{}); exists {
-			log.Printf("Modifying ipServers from %s", ipServers[0])
-			result["ipServers"] = []interface{}{"http://192.168.0.150:8980/6/"}
-		}
-
-		if apiServers, exists := result["apiServers"].([]interface{}); exists {
-			log.Printf("Modifying apiServers from %s", apiServers[0])
-			result["apiServers"] = []interface{}{"http://api.eu-pet.com/6/"}
 		}
 	}
 
