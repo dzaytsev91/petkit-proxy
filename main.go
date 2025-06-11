@@ -255,9 +255,7 @@ func proxyHandler(proxy http.Handler) http.Handler {
 		//	w.Write([]byte("403 - Host not allowed"))
 		//	return
 		//}
-		if debugLog {
-			log.Printf("Proxying request: %s %s %s", r.Method, r.URL.String(), r.Proto)
-		}
+		log.Printf("Proxying request: %s %s %s", r.Method, r.URL.String(), r.Proto)
 		proxy.ServeHTTP(w, r)
 		return
 	})
