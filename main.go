@@ -19,21 +19,24 @@ var (
 	telegramBotToken    = os.Getenv("TELEGRAM_BOT_TOKEN")
 	telegramChatID      = os.Getenv("TELEGRAM_CHAT_ID")
 	targetSN            = os.Getenv("TARGET_SN")
+	debugLog            = os.Getenv("LOG_FORMAT") != "short"
 )
 
 const (
-	targetURL       = "http://api.eu-pet.com"
-	petkitHost      = "api.eu-pet.com"
-	proxyPort       = ":8080"
-	specialPath     = "/6/t4/dev_device_info"
-	iotDevInfoPath  = "/6/t4/dev_iot_device_info"
-	specialPath2    = "/6/t3/dev_signup"
-	specialPath3    = "/6/t3/dev_device_info"
-	serverInfoPath  = "/6/t4/dev_serverinfo"
-	serverInfoPath3 = "/6/t3/dev_serverinfo"
-	heartBeatPath   = "/6/poll/t3/heartbeat"
-	telegramAPIURL  = "https://api.telegram.org/bot%s/sendMessage"
-	patchedRegion   = "cn-shanghai"
+	petkitHost         = "api.eu-pet.com"
+	targetURL          = "http://" + petkitHost
+	apiUrl             = targetURL + "/6/"
+	proxyPort          = ":8080"
+	devDeviceInfoPath  = "/6/t4/dev_device_info"
+	devDeviceInfoPath3 = "/6/t3/dev_device_info"
+	iotDevInfoPath     = "/6/t4/dev_iot_device_info"
+	devSignupPath      = "/6/t4/dev_signup"
+	devSignupPath3     = "/6/t3/dev_signup"
+	serverInfoPath     = "/6/t4/dev_serverinfo"
+	serverInfoPath3    = "/6/t3/dev_serverinfo"
+	heartBeatPath      = "/6/poll/t4/heartbeat"
+	heartBeatPath3     = "/6/poll/t3/heartbeat"
+	telegramAPIURL     = "https://api.telegram.org/bot%s/sendMessage"
 )
 
 type Response struct {
@@ -90,13 +93,15 @@ func sendTelegramMessage(message string) {
 }
 
 func logRequest(r *http.Request) {
-	if r.URL.Path == heartBeatPath {
+	if r.URL.Path == heartBeatPath || r.URL.Path == heartBeatPath3 {
 		return
 	}
 	log.Printf(">>> Request: %s %s %s", r.Method, r.URL.String(), r.Proto)
-	for name, values := range r.Header {
-		for _, value := range values {
-			log.Printf(">>> Header: %s: %s", name, value)
+	if debugLog {
+		for name, values := range r.Header {
+			for _, value := range values {
+				log.Printf(">>> Header: %s: %s", name, value)
+			}
 		}
 	}
 	if r.Body != nil {
@@ -113,9 +118,11 @@ func logRequest(r *http.Request) {
 func logResponse(resp *http.Response) {
 	if resp != nil {
 		log.Printf("<<< Response: %s", resp.Status)
-		for name, values := range resp.Header {
-			for _, value := range values {
-				log.Printf("<<< Header: %s: %s", name, value)
+		if debugLog {
+			for name, values := range resp.Header {
+				for _, value := range values {
+					log.Printf("<<< Header: %s: %s", name, value)
+				}
 			}
 		}
 
@@ -130,7 +137,13 @@ func logResponse(resp *http.Response) {
 }
 
 func modifyResponse(resp *http.Response) error {
-	if resp.Request.URL.Path != specialPath && resp.Request.URL.Path != serverInfoPath && resp.Request.URL.Path != serverInfoPath3 && resp.Request.URL.Path != specialPath2 && resp.Request.URL.Path != specialPath3 && resp.Request.URL.Path != iotDevInfoPath {
+	if resp.Request.URL.Path != devDeviceInfoPath &&
+		resp.Request.URL.Path != devDeviceInfoPath3 &&
+		resp.Request.URL.Path != serverInfoPath &&
+		resp.Request.URL.Path != serverInfoPath3 &&
+		resp.Request.URL.Path != devSignupPath &&
+		resp.Request.URL.Path != devSignupPath3 &&
+		resp.Request.URL.Path != iotDevInfoPath {
 		return nil
 	}
 
@@ -138,11 +151,13 @@ func modifyResponse(resp *http.Response) error {
 		response := Response{
 			Result: Result{
 				IPServers:  []string{serverInfoIpAddress},
-				APIServers: []string{"http://api.eu-pet.com/6/"},
+				APIServers: []string{apiUrl},
 				NextTick:   3600,
 				Linked:     0,
 			},
 		}
+
+		log.Printf("Modifying IPServers and APIServers")
 
 		resp.Header.Set("Content-Type", "application/json")
 		modifiedBody, err := json.Marshal(response)
@@ -177,17 +192,18 @@ func modifyResponse(resp *http.Response) error {
 			if autowork, exists := settings["autoWork"].(float64); exists {
 				log.Printf("Modifying autowork from %.0f to 1", autowork)
 				if result["sn"].(string) == targetSN {
-					message := fmt.Sprintf("Response: %s for %s %s, %s", resp.Status, resp.Request.Method, resp.Request.URL.Path, data)
+					message := fmt.Sprintf("Response: %s for %s %s", resp.Status, resp.Request.Method, resp.Request.URL.Path)
+					if debugLog {
+						jsonBytes, err := json.Marshal(data)
+						if err == nil {
+							message += " | Body: " + string(jsonBytes)
+						}
+					}
 					sendTelegramMessage(message)
 				}
 				settings["autoWork"] = 1
 				settings["unit"] = 0
 			}
-		}
-
-		if regionId, exists := result["regionId"].(string); exists {
-			log.Printf("Modifying regionId from %s to %s", regionId, patchedRegion)
-			result["regionId"] = patchedRegion
 		}
 	}
 

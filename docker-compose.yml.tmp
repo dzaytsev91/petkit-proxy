@@ -8,5 +8,6 @@ services:
       TELEGRAM_BOT_TOKEN: "token"
       TELEGRAM_CHAT_ID: "chat_id"
       TARGET_SN: "target_sn"
+      LOG_FORMAT: "short"
     ports:
     - "80:8080"
