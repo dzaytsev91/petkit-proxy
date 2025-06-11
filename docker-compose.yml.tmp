@@ -4,8 +4,10 @@ services:
       context: .
     environment:
       SERVER_IP: "your_server_ip"
+      SERVER_PORT: "your_server_port"
       TELEGRAM_BOT_TOKEN: "token"
       TELEGRAM_CHAT_ID: "chat_id"
       TARGET_SN: "target_sn"
+      LOG_FORMAT: "short"
     ports:
     - "80:8080"
