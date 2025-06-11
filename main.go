@@ -93,7 +93,7 @@ func sendTelegramMessage(message string) {
 }
 
 func logRequest(r *http.Request) {
-	if r.URL.Path == heartBeatPath || r.URL.Path == heartBeatPath3 {
+	if !debugLog && (r.URL.Path == heartBeatPath || r.URL.Path == heartBeatPath3) {
 		return
 	}
 	log.Printf(">>> Request: %s %s %s", r.Method, r.URL.String(), r.Proto)
@@ -116,23 +116,27 @@ func logRequest(r *http.Request) {
 }
 
 func logResponse(resp *http.Response) {
-	if resp != nil {
-		log.Printf("<<< Response: %s", resp.Status)
-		if debugLog {
-			for name, values := range resp.Header {
-				for _, value := range values {
-					log.Printf("<<< Header: %s: %s", name, value)
-				}
+	if resp == nil {
+		return
+	}
+	if !debugLog && (resp.Request.URL.Path == heartBeatPath || resp.Request.URL.Path == heartBeatPath3) {
+		return
+	}
+	log.Printf("<<< Response: %s", resp.Status)
+	if debugLog {
+		for name, values := range resp.Header {
+			for _, value := range values {
+				log.Printf("<<< Header: %s: %s", name, value)
 			}
 		}
+	}
 
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			log.Printf("<<< Error reading response body: %v", err)
-		} else {
-			log.Printf("<<< Body: %s", string(body))
-			resp.Body = io.NopCloser(bytes.NewBuffer(body))
-		}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Printf("<<< Error reading response body: %v", err)
+	} else {
+		log.Printf("<<< Body: %s", string(body))
+		resp.Body = io.NopCloser(bytes.NewBuffer(body))
 	}
 }
 
@@ -251,7 +255,9 @@ func proxyHandler(proxy http.Handler) http.Handler {
 		//	w.Write([]byte("403 - Host not allowed"))
 		//	return
 		//}
-		log.Printf("Proxying request: %s %s %s", r.Method, r.URL.String(), r.Proto)
+		if debugLog {
+			log.Printf("Proxying request: %s %s %s", r.Method, r.URL.String(), r.Proto)
+		}
 		proxy.ServeHTTP(w, r)
 		return
 	})
