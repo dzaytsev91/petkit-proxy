@@ -179,6 +179,11 @@ func modifyResponse(resp *http.Response) error {
 				}
 				settings["autoWork"] = 1
 			}
+
+			if unit, exists := settings["unit"].(float64); exists {
+				log.Printf("Modifying unit from %.0f to 0", unit)
+				settings["unit"] = 1
+			}
 		}
 	}
 
