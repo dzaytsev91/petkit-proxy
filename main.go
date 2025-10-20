@@ -226,12 +226,12 @@ func NewReverseProxy(target *url.URL) *httputil.ReverseProxy {
 
 func proxyHandler(proxy http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		//if r.Host != petkitHost {
-		//	log.Printf("Rejected request for host: %s", r.Host)
-		//	w.WriteHeader(http.StatusForbidden)
-		//	w.Write([]byte("403 - Host not allowed"))
-		//	return
-		//}
+		if r.Host != petkitHost {
+			log.Printf("Rejected request for host: %s", r.Host)
+			w.WriteHeader(http.StatusForbidden)
+			w.Write([]byte("403 - Host not allowed"))
+			return
+		}
 		log.Printf("Proxying request for host: %s", r.Host)
 		proxy.ServeHTTP(w, r)
 		return
