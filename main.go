@@ -172,17 +172,18 @@ func modifyResponse(resp *http.Response) error {
 	if result, ok := data["result"].(map[string]interface{}); ok {
 		if settings, ok := result["settings"].(map[string]interface{}); ok {
 			if autowork, exists := settings["autoWork"].(float64); exists {
+				message := fmt.Sprintf("Not unlocked sn: %s", result["sn"].(string))
 				log.Printf("Modifying autowork from %.0f to 1", autowork)
 				if result["sn"].(string) == targetSN {
-					message := fmt.Sprintf("Response: %s for %s %s, %s", resp.Status, resp.Request.Method, resp.Request.URL.Path, data)
-					sendTelegramMessage(message)
+					message = fmt.Sprintf("Unlocked seached sn: %s", result["sn"].(string))
+					settings["autoWork"] = 1
+					settings["unit"] = 0
 				}
-				settings["autoWork"] = 1
+				sendTelegramMessage(message)
 			}
 
 			if unit, exists := settings["unit"].(float64); exists {
 				log.Printf("Modifying unit from %.0f to 0", unit)
-				settings["unit"] = 0
 			}
 		}
 	}
