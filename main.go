@@ -11,6 +11,7 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"os"
+	"slices"
 	"strconv"
 )
 
@@ -19,11 +20,11 @@ var (
 	telegramBotToken    = os.Getenv("TELEGRAM_BOT_TOKEN")
 	telegramChatID      = os.Getenv("TELEGRAM_CHAT_ID")
 	targetSN            = os.Getenv("TARGET_SN")
+	petkitHosts         = []string{"api.eu-pet.com", "petktasia.com"}
 )
 
 const (
 	targetURL      = "http://api.eu-pet.com"
-	petkitHost     = "api.eu-pet.com"
 	proxyPort      = ":8080"
 	specialPath    = "/6/t4/dev_device_info"
 	specialPath2   = "/6/t3/dev_signup"
@@ -178,12 +179,9 @@ func modifyResponse(resp *http.Response) error {
 					message = fmt.Sprintf("Unlocked seached sn: %s", result["sn"].(string))
 					settings["autoWork"] = 1
 					settings["unit"] = 0
+					settings["sandType"] = 1
 				}
 				sendTelegramMessage(message)
-			}
-
-			if unit, exists := settings["unit"].(float64); exists {
-				log.Printf("Modifying unit from %.0f to 0", unit)
 			}
 		}
 	}
@@ -226,7 +224,7 @@ func NewReverseProxy(target *url.URL) *httputil.ReverseProxy {
 
 func proxyHandler(proxy http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Host != petkitHost {
+		if !slices.Contains(petkitHosts, r.Host) {
 			log.Printf("Rejected request for host: %s", r.Host)
 			w.WriteHeader(http.StatusForbidden)
 			w.Write([]byte("403 - Host not allowed"))
