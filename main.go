@@ -20,7 +20,7 @@ var (
 	telegramBotToken    = os.Getenv("TELEGRAM_BOT_TOKEN")
 	telegramChatID      = os.Getenv("TELEGRAM_CHAT_ID")
 	targetSN            = os.Getenv("TARGET_SN")
-	petkitHosts         = []string{"api.eu-pet.com", "petktasia.com"}
+	petkitHosts         = []string{"api.eu-pet.com", "petktasia.com", "api.petktasia.com"}
 )
 
 const (
