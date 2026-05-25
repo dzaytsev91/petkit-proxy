@@ -46,3 +46,4 @@ _testmain.go
 /test/run.out
 /test/times.out
 .idea/
+docker-compose.yml

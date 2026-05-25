@@ -7,4 +7,5 @@ FROM scratch
 WORKDIR /app
 COPY --from=builder /app/petkit-proxy .
 EXPOSE 8080
+EXPOSE 8443
 CMD ["./petkit-proxy"]

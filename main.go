@@ -2,17 +2,25 @@ package main
 
 import (
 	"bytes"
+	"crypto/rand"
+	"crypto/rsa"
 	"crypto/tls"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"io"
 	"log"
+	"math/big"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"os"
 	"slices"
 	"strconv"
+	"time"
 )
 
 var (
@@ -26,6 +34,7 @@ var (
 const (
 	targetURL      = "http://api.eu-pet.com"
 	proxyPort      = ":8080"
+	httpsPort      = ":8443"
 	specialPath    = "/6/t4/dev_device_info"
 	specialPath2   = "/6/t3/dev_signup"
 	specialPath3   = "/6/t3/dev_device_info"
@@ -236,6 +245,33 @@ func proxyHandler(proxy http.Handler) http.Handler {
 	})
 }
 
+func generateSelfSignedCert() (tls.Certificate, error) {
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		return tls.Certificate{}, err
+	}
+
+	template := x509.Certificate{
+		SerialNumber: big.NewInt(1),
+		Subject:      pkix.Name{Organization: []string{"Petkit Proxy"}},
+		DNSNames:     append(petkitHosts, "*.eu-pet.com", "*.petktasia.com"),
+		NotBefore:    time.Now(),
+		NotAfter:     time.Now().Add(10 * 365 * 24 * time.Hour),
+		KeyUsage:     x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+	}
+
+	certDER, err := x509.CreateCertificate(rand.Reader, &template, &template, &key.PublicKey, key)
+	if err != nil {
+		return tls.Certificate{}, err
+	}
+
+	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDER})
+	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key)})
+
+	return tls.X509KeyPair(certPEM, keyPEM)
+}
+
 func main() {
 	target, err := url.Parse(targetURL)
 	if err != nil {
@@ -243,6 +279,27 @@ func main() {
 	}
 	proxy := NewReverseProxy(target)
 	handler := proxyHandler(proxy)
-	log.Printf("Starting proxy server on %s", proxyPort)
-	log.Fatal(http.ListenAndServe(proxyPort, handler))
+
+	cert, err := generateSelfSignedCert()
+	if err != nil {
+		log.Fatalf("Failed to generate TLS certificate: %v", err)
+	}
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{cert},
+	}
+	tlsLn, err := tls.Listen("tcp", httpsPort, tlsConfig)
+	if err != nil {
+		log.Fatalf("Failed to listen on %s: %v", httpsPort, err)
+	}
+	go func() {
+		log.Printf("Starting HTTPS proxy server on %s", httpsPort)
+		log.Fatal(http.Serve(tlsLn, handler))
+	}()
+
+	log.Printf("Starting HTTP proxy server on %s", proxyPort)
+	ln, err := net.Listen("tcp", proxyPort)
+	if err != nil {
+		log.Fatalf("Failed to listen on %s: %v", proxyPort, err)
+	}
+	log.Fatal(http.Serve(ln, handler))
 }
